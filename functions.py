@@ -701,6 +701,10 @@ def simplify_model_based_on_network_def(simplified_network_def, model):
         simplified_model = copy.deepcopy(model)
         simplified_state_dict = simplified_model.state_dict()
         kept_filter_idx = None
+        #EKU ADDED
+        if kept_filter_idx is not None:
+            kept_filter_idx = kept_filter_idx.long()  # Convert to long tensor
+        #EKU ADDED ENDS
 
         for layer_param_full_name in simplified_state_dict.keys():
             layer = get_layer_by_param_name(simplified_model, layer_param_full_name)
@@ -719,6 +723,12 @@ def simplify_model_based_on_network_def(simplified_network_def, model):
                     KEY_BEFORE_SQUARED_PIXEL_SHUFFLE_FACTOR]
                 kept_filter_idx = (kept_filter_idx[::before_squared_pixel_shuffle_factor] /
                                    before_squared_pixel_shuffle_factor)
+                #EKU ADDED
+                print("kept_filter_idx type now:", kept_filter_idx.dtype)
+                #THIS PRINTS kept_filter_idx type: torch.float32 so convert it
+                kept_filter_idx = kept_filter_idx.long()  
+                #EKU ADDED ENDS
+
 
                 if layer_param_name == WEIGHTSTRING: #WEIGHTSTRING == layer_param_name:                    
                     if layer.groups == 1:  # Pointwise layer or depthwise layer with only one filter.
@@ -738,6 +748,7 @@ def simplify_model_based_on_network_def(simplified_network_def, model):
                 elif layer_param_name == BIASSTRING: #BIASSTRING == layer_param_name:
                     print('    simplify_model> simplify Conv layer {}: output channel biases {}'.format(layer_name_str, 
                           len(kept_filter_idx)))
+                    
                     setattr(layer, layer_param_name,
                             torch.nn.Parameter(getattr(layer, layer_param_name)[kept_filter_idx]))
                 else:

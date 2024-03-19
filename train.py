@@ -10,12 +10,19 @@ import torch.backends.cudnn as cudnn
 
 import nets as models
 import functions as fns
+#eku added starts
+from eku_random import AtrousSpatialPyramidPooling
+#eku added ends
 
 _NUM_CLASSES = 10
-
+#eku changed this
+# model_names = sorted(name for name in models.__dict__
+#     if name.islower() and not name.startswith("__")
+#     and callable(models.__dict__[name]))
+# to this:
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
-    and callable(models.__dict__[name]))
+    and callable(models.__dict__[name])) + ['aspp']  # Add 'aspp' to the model choices
 
 
 def adjust_learning_rate(optimizer, epoch, args):
@@ -208,42 +215,94 @@ if __name__ == '__main__':
     cudnn.benchmark = True
     num_classes = _NUM_CLASSES
     model_arch = args.arch
-    model = models.__dict__[model_arch](num_classes=num_classes)
+
+    #model = models.__dict__[model_arch](num_classes=num_classes) #eku removed this line
+    #eku added:
+    if model_arch == 'aspp':
+    # Assuming the input channels are 1024 for ASPP
+        in_channels = 3
+        model = AtrousSpatialPyramidPooling(in_channels)
+    else:
+        model = models.__dict__[model_arch](num_classes=num_classes)
+    #eku added ends
     criterion = nn.BCEWithLogitsLoss()
     if not args.no_cuda:
         model = model.cuda()
         criterion = criterion.cuda()
-
+    #eku removed
     # optionally resume from a checkpoint
-    if args.resume:
-        if os.path.isfile(args.resume):
-            print("Loading checkpoint '{}'".format(args.resume))
-            model = torch.load(args.resume)
+    # if args.resume:
+    #     if os.path.isfile(args.resume):
+    #         print("Loading checkpoint '{}'".format(args.resume))
+    #         model = torch.load(args.resume)
 
-        else:
-            print("No checkpoint found at '{}'".format(args.resume))
+    #     else:
+    #         print("No checkpoint found at '{}'".format(args.resume))
             
+    # optimizer = torch.optim.SGD(model.parameters(), args.lr,
+    #                             momentum=args.momentum,
+    #                             weight_decay=args.weight_decay)
+
+    # # Train & evaluation
+    # best_acc = 0
+    # filename = os.path.join(args.save_dir)  eku removed till here
+
+    # Optionally resume from a checkpoint
+    #eku added satrts
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
                                 weight_decay=args.weight_decay)
-
-    # Train & evaluation
-    best_acc = 0
+    if args.resume:
+        if os.path.isfile(args.resume):
+            print(f"Loading checkpoint '{args.resume}'")
+            checkpoint = torch.load(args.resume)
+            start_epoch = checkpoint['epoch']
+            best_acc = checkpoint['best_acc']
+            model.load_state_dict(checkpoint['state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
+            print(f"Resumed from checkpoint: {args.resume}, starting at epoch {start_epoch}, best accuracy so far: {best_acc}")
+        else:
+            print(f"No checkpoint found at '{args.resume}'")
+    else:
+        start_epoch = 0
+        best_acc = 0
+        print("Starting training from scratch.") 
+    #eku added ends
+    # optimizer = torch.optim.SGD(model.parameters(), args.lr,
+    #                             momentum=args.momentum,
+    #                             weight_decay=args.weight_decay)
     filename = os.path.join(args.save_dir)
+
     
-    for epoch in range(args.start_epoch, args.epochs):
+   
+    for epoch in range(args.start_epoch, args.epochs):  #eku removed
         print('Epoch [{}/{}]'.format(epoch+1, args.epochs - args.start_epoch))
         adjust_learning_rate(optimizer, epoch, args)
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, args)
         acc = eval(test_loader, model, args)
-        
+        #eku removed
+        # if acc > best_acc:
+        #     torch.save(model, filename)
+        #     best_acc = acc
+        #     print('Save model: ' + filename)
+        # print(' ')
+        #eku removed till here
+        #eku added ebgins
         if acc > best_acc:
-            torch.save(model, filename)
             best_acc = acc
+            checkpoint = {
+                'epoch': epoch,
+                'best_acc': best_acc,
+                'state_dict': model.state_dict(),
+                'optimizer': optimizer.state_dict()
+            }
+            torch.save(checkpoint, filename)
             print('Save model: ' + filename)
+
         print(' ')
-    print('Best accuracy:', best_acc)
+        print('Best accuracy:', best_acc)
+    #eku added ends
     
     model = torch.load(filename)
     print(model)

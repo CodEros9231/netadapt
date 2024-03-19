@@ -87,6 +87,7 @@ def _launch_worker(worker_folder, model_path, block, resource_type, constraint, 
         print(command_list)
         
         subprocess.Popen(command_list, stdout=file_id, stderr=file_id)
+        print('Subprocess popopen happened alreaedy\n')
 
     updated_job_list.append({_KEY_ITERATION: netadapt_iteration, _KEY_BLOCK: block, _KEY_GPU: gpu})
     del updated_available_gpus[0]
@@ -339,11 +340,13 @@ def master(args):
             ('Process iteration {:>3}: current_accuracy = {:>8.3f}, '
              'current_resource = {:>8.3f}, target_resource = {:>8.3f}').format(
                 current_iter, current_accuracy, current_resource, target_resource))
+        print('Before waittttt\n')
 
         # Launch the workers.
         job_list = []
         
         # Launch worker for each block
+        print('network utils value EKU:', network_utils.get_num_simplifiable_blocks())
         for block_idx in range(network_utils.get_num_simplifiable_blocks()):
             # Check and update the gpu availability.
             job_list, available_gpus = _update_job_list_and_available_gpus(worker_folder, job_list, available_gpus)
@@ -361,11 +364,15 @@ def master(args):
             print('Update job list:     ', job_list)
             print('Update available gpu:', available_gpus, '\n')
 
+        # SO ITS STUCKE HERE FOR SURE
         # Wait until all the workers finish.
+        print('Before wait\n')
         job_list, available_gpus = _update_job_list_and_available_gpus(worker_folder, job_list, available_gpus)
+        print('After wait b4 job_list\n')
         while job_list:
             time.sleep(_SLEEP_TIME)
             job_list, available_gpus = _update_job_list_and_available_gpus(worker_folder, job_list, available_gpus)
+            print('Job_list count\n')
 
         # Find the best model.
         best_accuracy, best_model_path, best_resource, best_block = (

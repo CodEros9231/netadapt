@@ -19,6 +19,7 @@ network_utils_all = sorted(name for name in networkUtils.__dict__
 
 
 def worker(args):
+    print("worker function in worker.py entered")
     """
         The main function of the worker.
         `worker.py` loads a pretrained model, simplify it (one specific block), and short-term fine-tune the pruned model.
@@ -85,6 +86,7 @@ def worker(args):
 
 if __name__ == '__main__':
     # Parse the input arguments.
+    print("worker main entered")
     arg_parser = ArgumentParser()
     arg_parser.add_argument('worker_folder', type=str, 
                             help='directory where model and logging information will be saved')
